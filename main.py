@@ -45,17 +45,19 @@ TRIGGERS = [
     {"date": "2027-06-24", "type": "discount", "holiday": "4th of July", "holiday_date": "Jul 4, 2027"},
 
     # --- Pajama order-deadline sequence (Christmas, Valentine's, Summer/4th of July) ---
-    # Christmas: deadline Jul 31, 2026. Initial draft-send date already passed (Jul 2, 2026) — not scheduled.
-    {"date": "2026-07-17", "type": "checkin", "holiday": "Christmas", "deadline_date": "Jul 31, 2026"},
-    {"date": "2026-07-24", "type": "reminder", "holiday": "Christmas", "deadline_date": "Jul 31, 2026"},
+    # Each holiday gets 3 emails, all containing the draft client email:
+    # 2 weeks before deadline (initial) -> 1 week before (follow-up) -> day of (final call)
+    {"date": "2026-07-17", "type": "two_week", "holiday": "Christmas", "deadline_date": "Jul 31, 2026"},
+    {"date": "2026-07-24", "type": "one_week", "holiday": "Christmas", "deadline_date": "Jul 31, 2026"},
+    {"date": "2026-07-31", "type": "day_of", "holiday": "Christmas", "deadline_date": "Jul 31, 2026"},
 
-    {"date": "2026-09-14", "type": "deadline_initial", "holiday": "Valentine's Day", "deadline_date": "Oct 14, 2026"},
-    {"date": "2026-09-30", "type": "checkin", "holiday": "Valentine's Day", "deadline_date": "Oct 14, 2026"},
-    {"date": "2026-10-07", "type": "reminder", "holiday": "Valentine's Day", "deadline_date": "Oct 14, 2026"},
+    {"date": "2026-09-30", "type": "two_week", "holiday": "Valentine's Day", "deadline_date": "Oct 14, 2026"},
+    {"date": "2026-10-07", "type": "one_week", "holiday": "Valentine's Day", "deadline_date": "Oct 14, 2026"},
+    {"date": "2026-10-14", "type": "day_of", "holiday": "Valentine's Day", "deadline_date": "Oct 14, 2026"},
 
-    {"date": "2027-02-04", "type": "deadline_initial", "holiday": "Summer / 4th of July", "deadline_date": "Mar 4, 2027"},
-    {"date": "2027-02-18", "type": "checkin", "holiday": "Summer / 4th of July", "deadline_date": "Mar 4, 2027"},
-    {"date": "2027-02-25", "type": "reminder", "holiday": "Summer / 4th of July", "deadline_date": "Mar 4, 2027"},
+    {"date": "2027-02-18", "type": "two_week", "holiday": "Summer / 4th of July", "deadline_date": "Mar 4, 2027"},
+    {"date": "2027-02-25", "type": "one_week", "holiday": "Summer / 4th of July", "deadline_date": "Mar 4, 2027"},
+    {"date": "2027-03-04", "type": "day_of", "holiday": "Summer / 4th of July", "deadline_date": "Mar 4, 2027"},
 ]
 
 
@@ -143,47 +145,48 @@ def build_email(trigger):
         return subject, body
 
     deadline_date = trigger["deadline_date"]
+    suggestions_block = format_client_suggestions(get_suggested_clients(holiday))
 
-    if ttype == "deadline_initial":
-        subject = f"{holiday} pajama order deadline — draft client email inside"
-        suggestions_block = format_client_suggestions(get_suggested_clients(holiday))
-        body = (
+    draft_block = (
+        f"---\n"
+        f"Draft client email:\n\n"
+        f"Subject: Order deadline for {holiday} pajamas — let's get you stocked up\n\n"
+        f"Hi [Client Name],\n\n"
+        f"Wanted to reach out because our deadline for ordering sets in time for {holiday} is "
+        f"coming up on {deadline_date}. We'd love to put together a holiday-themed design set "
+        f"for you, or just get some additional orders in so you have ample stock heading into "
+        f"the busy season.\n\n"
+        f"Let us know if you'd like to get started!\n\n"
+        f"Best,\n"
+        f"Sleepy Saturday"
+    )
+
+    if ttype == "two_week":
+        subject = f"{holiday} pajama order deadline in 2 weeks — draft client email inside"
+        intro = (
             f"Hey team,\n\n"
-            f"Here's the draft email to send clients about the {holiday} pajama order deadline "
-            f"({deadline_date}). Take a look and send whenever you're ready.\n\n"
-            f"---\n"
-            f"Draft client email:\n\n"
-            f"Subject: Order deadline for {holiday} pajamas — let's get you stocked up\n\n"
-            f"Hi [Client Name],\n\n"
-            f"Wanted to reach out because our deadline for ordering sets in time for {holiday} is "
-            f"coming up on {deadline_date}. We'd love to put together a holiday-themed design set "
-            f"for you, or just get some additional orders in so you have ample stock heading into "
-            f"the busy season.\n\n"
-            f"Let us know if you'd like to get started!\n\n"
-            f"Best,\n"
-            f"Sleepy Saturday"
-            f"{suggestions_block}"
+            f"The {holiday} pajama order deadline ({deadline_date}) is 2 weeks out. Here's the "
+            f"draft email to send clients — take a look and send whenever you're ready.\n\n"
         )
-        return subject, body
+        return subject, intro + draft_block + suggestions_block
 
-    if ttype == "checkin":
-        subject = f"Check-in: {holiday} order deadline in 2 weeks"
-        body = (
-            f"Hey team,\n\n"
-            f"Just flagging that the {holiday} pajama order deadline ({deadline_date}) is 2 weeks "
-            f"out. Wanted to check in on where things stand with client orders / whether the "
-            f"reminder email should go out."
-        )
-        return subject, body
-
-    if ttype == "reminder":
-        subject = f"Reminder: {holiday} order deadline in 1 week"
-        body = (
+    if ttype == "one_week":
+        subject = f"{holiday} pajama order deadline in 1 week — draft client email inside"
+        intro = (
             f"Hey team,\n\n"
             f"Reminder — the {holiday} pajama order deadline ({deadline_date}) is next week. "
-            f"Last call to get client orders in / send a final nudge if needed."
+            f"If the draft hasn't gone out yet, here it is again:\n\n"
         )
-        return subject, body
+        return subject, intro + draft_block + suggestions_block
+
+    if ttype == "day_of":
+        subject = f"{holiday} pajama order deadline is today — draft client email inside"
+        intro = (
+            f"Hey team,\n\n"
+            f"Today ({deadline_date}) is the last day for clients to order in time for {holiday}. "
+            f"Last call — here's the draft one more time if you need it:\n\n"
+        )
+        return subject, intro + draft_block + suggestions_block
 
     raise ValueError(f"Unknown trigger type: {ttype}")
 
